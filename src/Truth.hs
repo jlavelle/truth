@@ -10,19 +10,18 @@ module Truth where
 import Data.Maybe (fromJust)
 import Data.Map (Map)
 import qualified Data.Map as M
-import Data.Set (Set)
 import qualified Data.Set as S
 import Data.Text (Text)
-import qualified Data.Text as T
+import qualified Data.Text.Lazy as LT
 import Data.Functor.Foldable.TH (makeBaseFunctor)
 import Data.Functor.Foldable (cata)
 import Control.Monad (replicateM)
-import Data.List (intersperse)
 import Data.List.NonEmpty (NonEmpty(..))
 import qualified Data.List.NonEmpty as NE
-import Data.Foldable (fold)
 import Data.Bool (bool)
 import Data.Functor (($>))
+
+import Table (table)
 
 data Pred a
   = Statement a
@@ -85,17 +84,12 @@ trueEnv p =
   let s = statements p
   in mapFromFoldable $ NE.zip s (s $> True)
 
-tabulate :: Pred Text -> Text
-tabulate p = header <> rows
+tabulate :: Pred Text -> LT.Text
+tabulate p = table (NE.toList (statements p) <> [pretty p]) (NE.toList $ mkRow <$> envs p)
   where
-    header = fold (NE.intersperse " | " (statements p)) <> " | " <> pretty p <> "\n"
-    rows   = foldMap go $ envs p
-      where
-        go :: Map Text Bool -> Text
-        go m =
-          let vs = fold $ intersperse " | " $ fmap snd $ M.toList $ prettyBool <$> m
-              r  = prettyBool $ eval p m
-          in vs <> " | " <> r <> "\n"
+    mkRow env =
+      let r = prettyBool $ eval p env
+      in (prettyBool . snd <$> M.toList env) <> [r]
 
 prettyBool :: Bool -> Text
 prettyBool = bool "F" "T"
