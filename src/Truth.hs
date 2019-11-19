@@ -22,6 +22,7 @@ import Data.List.NonEmpty (NonEmpty(..))
 import qualified Data.List.NonEmpty as NE
 import Data.Foldable (fold)
 import Data.Bool (bool)
+import Data.Functor (($>))
 
 data Pred a
   = Statement a
@@ -53,9 +54,10 @@ eval p env = cata go p
     go (EquivF a b)   = a == b
 
 valid :: Ord a => Argument a -> Bool
-valid a = let p = toPred a
-              e = NE.head $ envs p
-          in eval p e
+valid a@(Argument (p :| ps) _) =
+  let pr = toPred a
+      vs = NE.filter (eval (foldr And p ps)) $ envs pr
+  in all id $ fmap (eval pr) vs
 
 pretty :: Pred Text -> Text
 pretty = cata go
@@ -77,6 +79,11 @@ envs p =
   let ss = statements p
       bs = NE.fromList $ replicateM (length ss) [True, False]
   in mapFromFoldable . NE.zip ss . NE.fromList <$> bs
+
+trueEnv :: Ord a => Pred a -> Map a Bool
+trueEnv p =
+  let s = statements p
+  in mapFromFoldable $ NE.zip s (s $> True)
 
 tabulate :: Pred Text -> Text
 tabulate p = header <> rows
