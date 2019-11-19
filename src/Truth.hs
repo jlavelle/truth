@@ -7,12 +7,15 @@
 
 module Truth where
 
+import Prelude hiding (not, (&&), (||))
+
 import Data.Maybe (fromJust)
 import Data.Map (Map)
 import qualified Data.Map as M
 import qualified Data.Set as S
 import Data.Text (Text)
 import qualified Data.Text.Lazy as LT
+import qualified Data.Text.Lazy.IO as LT
 import Data.Functor.Foldable.TH (makeBaseFunctor)
 import Data.Functor.Foldable (cata)
 import Control.Monad (replicateM)
@@ -20,7 +23,9 @@ import Data.List.NonEmpty (NonEmpty(..))
 import qualified Data.List.NonEmpty as NE
 import Data.Bool (bool)
 import Data.Functor (($>))
+import Data.String (IsString(..))
 
+import Heyting ((&&), (||), HeytingAlgebra(..))
 import Table (table)
 
 data Pred a
@@ -33,6 +38,17 @@ data Pred a
   deriving (Functor, Foldable, Show)
 
 makeBaseFunctor ''Pred
+
+instance IsString a => IsString (Pred a) where
+  fromString = Statement . fromString
+
+instance Monoid a => HeytingAlgebra (Pred a) where
+  tt = Statement mempty
+  ff = not (Statement mempty)
+  conj = And
+  disj = Or
+  implies = Implies
+  not = Not
 
 data Argument a = Argument
   { argPremises   :: NonEmpty (Pred a)
@@ -49,7 +65,7 @@ eval p env = cata go p
     go (AndF a b)     = a && b
     go (OrF a b)      = a || b
     go (NotF a)       = not a
-    go (ImpliesF a b) = not a || b
+    go (ImpliesF a b) = a `implies` b
     go (EquivF a b)   = a == b
 
 valid :: Ord a => Argument a -> Bool
@@ -90,6 +106,9 @@ tabulate p = table (NE.toList (statements p) <> [pretty p]) (NE.toList $ mkRow <
     mkRow env =
       let r = prettyBool $ eval p env
       in (prettyBool . snd <$> M.toList env) <> [r]
+
+printTable :: Pred Text -> IO ()
+printTable = LT.putStrLn . tabulate
 
 prettyBool :: Bool -> Text
 prettyBool = bool "F" "T"
