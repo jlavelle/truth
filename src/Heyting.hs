@@ -12,6 +12,9 @@ class HeytingAlgebra a where
   disj :: a -> a -> a
   not :: a -> a
 
+  equiv :: a -> a -> a
+  equiv a b = a `implies` b && b `implies` a
+
 instance HeytingAlgebra Bool where
   ff = False
   tt = True
@@ -19,6 +22,7 @@ instance HeytingAlgebra Bool where
   conj = (Prelude.&&)
   disj = (Prelude.||)
   not = Prelude.not
+  equiv = (==)
 
 (||) :: HeytingAlgebra a => a -> a -> a
 (||) = disj

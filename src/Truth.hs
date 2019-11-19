@@ -49,6 +49,7 @@ instance Monoid a => HeytingAlgebra (Pred a) where
   disj = Or
   implies = Implies
   not = Not
+  equiv = Equiv
 
 data Argument a = Argument
   { argPremises   :: NonEmpty (Pred a)
