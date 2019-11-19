@@ -18,6 +18,8 @@ import Data.Functor.Foldable.TH (makeBaseFunctor)
 import Data.Functor.Foldable (cata)
 import Control.Monad (replicateM)
 import Data.List (intersperse)
+import Data.List.NonEmpty (NonEmpty(..))
+import qualified Data.List.NonEmpty as NE
 import Data.Foldable (fold)
 import Data.Bool (bool)
 
@@ -32,6 +34,14 @@ data Pred a
 
 makeBaseFunctor ''Pred
 
+data Argument a = Argument
+  { argPremises   :: NonEmpty (Pred a)
+  , argConclusion :: Pred a
+  }
+
+toPred :: Argument a -> Pred a
+toPred (Argument (p :| ps) c) = Implies (foldr And p ps) c
+
 eval :: Ord a => Pred a -> Map a Bool -> Bool
 eval p env = cata go p
   where
@@ -41,6 +51,11 @@ eval p env = cata go p
     go (NotF a)       = not a
     go (ImpliesF a b) = not a || b
     go (EquivF a b)   = a == b
+
+valid :: Ord a => Argument a -> Bool
+valid a = let p = toPred a
+              e = NE.head $ envs p
+          in eval p e
 
 pretty :: Pred Text -> Text
 pretty = cata go
@@ -54,19 +69,19 @@ pretty = cata go
 
     parens x = "(" <> x <> ")"
 
-statements :: Ord a => Pred a -> [a]
-statements = S.toList . foldr S.insert S.empty
+statements :: Ord a => Pred a -> NonEmpty a
+statements = NE.fromList . S.toList . foldr S.insert S.empty
 
-envs :: Ord a => Pred a -> [Map a Bool]
+envs :: Ord a => Pred a -> NonEmpty (Map a Bool)
 envs p =
   let ss = statements p
-      bs = replicateM (length ss) [True, False]
-  in M.fromList . zip ss <$> bs
+      bs = NE.fromList $ replicateM (length ss) [True, False]
+  in mapFromFoldable . NE.zip ss . NE.fromList <$> bs
 
 tabulate :: Pred Text -> Text
 tabulate p = header <> rows
   where
-    header = fold (intersperse " | " (statements p)) <> " | " <> pretty p <> "\n"
+    header = fold (NE.intersperse " | " (statements p)) <> " | " <> pretty p <> "\n"
     rows   = foldMap go $ envs p
       where
         go :: Map Text Bool -> Text
@@ -77,3 +92,6 @@ tabulate p = header <> rows
 
 prettyBool :: Bool -> Text
 prettyBool = bool "F" "T"
+
+mapFromFoldable :: (Ord k, Foldable f) => f (k, v) -> Map k v
+mapFromFoldable = foldr (\(k, v) -> M.insert k v) M.empty
