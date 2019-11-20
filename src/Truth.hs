@@ -30,6 +30,7 @@ import Table (table)
 
 data Pred a
   = Statement a
+  | Truth
   | And (Pred a) (Pred a)
   | Or (Pred a) (Pred a)
   | Not (Pred a)
@@ -43,8 +44,8 @@ instance IsString a => IsString (Pred a) where
   fromString = Statement . fromString
 
 instance Monoid a => HeytingAlgebra (Pred a) where
-  tt = Statement mempty
-  ff = not (Statement mempty)
+  tt = Truth
+  ff = not Truth
   conj = And
   disj = Or
   implies = Implies
@@ -63,6 +64,7 @@ eval :: Ord a => Pred a -> Map a Bool -> Bool
 eval p env = cata go p
   where
     go (StatementF t) = fromJust $ M.lookup t env
+    go TruthF         = True
     go (AndF a b)     = a && b
     go (OrF a b)      = a || b
     go (NotF a)       = not a
@@ -79,6 +81,7 @@ pretty :: Pred Text -> Text
 pretty = cata go
   where
     go (StatementF t) = t
+    go TruthF         = "Truth"
     go (AndF a b)     = parens (a <> " & " <> b)
     go (OrF a b)      = parens (a <> " | " <> b)
     go (NotF a)       = "-" <> a
