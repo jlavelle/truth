@@ -111,6 +111,17 @@ tabulate p = table (NE.toList (statements p) <> [pretty p]) (NE.toList $ mkRow <
       let r = prettyBool $ eval p env
       in (prettyBool . snd <$> M.toList env) <> [r]
 
+tabulateArg :: Argument Text -> LT.Text
+tabulateArg a@(Argument ps c) = table hs $ NE.toList $ mkRow <$> envs pr
+  where
+    pr = toPred a
+    hs = NE.toList (statements pr <> fmap pretty ps) <> [pretty c, pretty pr]
+    mkRow env =
+      let rps = NE.toList $ fmap (prettyBool . flip eval env) ps
+          rc  = prettyBool $ eval c env
+          rpr = prettyBool $ eval pr env
+      in (prettyBool . snd <$> M.toList env) <> rps <> [rc, rpr]
+
 printTable :: Pred Text -> IO ()
 printTable = LT.putStrLn . tabulate
 
