@@ -33,3 +33,12 @@ infixr 2 ||
 (&&) = conj
 
 infixr 3 &&
+
+xor :: HeytingAlgebra a => a -> a -> a
+xor a b = (a || b) && not (a && b)
+
+nor :: HeytingAlgebra a => a -> a -> a
+nor a b = not a && not b
+
+nand :: HeytingAlgebra a => a -> a -> a
+nand a b = not (a && b)
